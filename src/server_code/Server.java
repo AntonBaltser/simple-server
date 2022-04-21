@@ -18,7 +18,7 @@ class Server {
     private AsynchronousServerSocketChannel server;
     private final HttpHandler handler;
     private final static String HEADERS =
-            "HTTP/1.1 200 OK\n" +
+                    "HTTP/1.1 200 OK\n" +
                     "server_code.Server: mySimpleServer\n" +
                     "Content-Type: text/html\n" +
                     "Content-Length: %s\n" +
