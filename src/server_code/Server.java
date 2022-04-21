@@ -7,22 +7,14 @@ import java.nio.CharBuffer;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 class Server {
     private final static int BUFFER_SIZE = 256;
     private AsynchronousServerSocketChannel server;
     private final HttpHandler handler;
-    private final static String HEADERS =
-                    "HTTP/1.1 200 OK\n" +
-                    "server_code.Server: mySimpleServer\n" +
-                    "Content-Type: text/html\n" +
-                    "Content-Length: %s\n" +
-                    "Connection: close\n\n";
 
     Server(HttpHandler handler) {
         this.handler = handler;
@@ -72,13 +64,32 @@ class Server {
 
             HttpRequest request = new HttpRequest(builder.toString());
             HttpResponse response = new HttpResponse();
+            if(handler != null) {
+                try{
+                    String body = this.handler.handle(request, response);
 
-            String body = this.handler.handle(request, response);
+                    if(body != null && !body.isBlank()){
+                        if(response.getHeaders().get("Content-Type") == null){
+                            response.addHeaders("Content-Type", "text/html; charest-utf-8");
+                        }
+                        response.setBody(body);
+                    }
+                } catch (Exception e){
+                    e.printStackTrace();
 
-            String page = String.format(HEADERS, body.length()) + body;
-            ByteBuffer res = ByteBuffer.wrap(page.getBytes()); //ctrl+alt+v вынести в отдельную переменную
+                    response.setStatusCode(500);
+                    response.setStatus("Internal server error");
+                    response.addHeaders("Content-Type", "text/html; charset=utf-8");
+                    response.setBody("<html><body><h1>Error happens</h1></body></html>");
+                }
+            } else {
+                response.setStatusCode(404);
+                response.setStatus("Not found");
+                response.addHeaders("Content-Type", "text/html; charset=utf-8");
+                response.setBody("<html><body><h1>Page not found!</h1></body></html>");
+            }
+            ByteBuffer res = ByteBuffer.wrap(response.getBytes()); //ctrl+alt+v вынести в отдельную переменную
             clientChannel.write(res);
-
             clientChannel.close();
         }
     }
